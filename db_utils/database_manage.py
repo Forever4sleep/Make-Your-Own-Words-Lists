@@ -1,5 +1,25 @@
 import psycopg2 as psy
 import config
+from functools import wraps
+
+
+def query_execution(func):
+    """ A decorator that saves changes in a db and at the same time frees resources of cursor """
+    @wraps(func)
+    def func_itself(*args, **kwargs):
+        DbManage.current_cursor = DbManage.current_connection.cursor()
+
+        res = func(*args, **kwargs)
+
+        DbManage.current_connection.commit()
+
+        DbManage.current_cursor.close()
+
+        if res is not None:
+            return res
+
+    return func_itself
+
 
 
 class DbManage:
@@ -8,30 +28,19 @@ class DbManage:
     
     current_cursor = current_connection.cursor()
 
-    @staticmethod
-    def cursor_wrapper(self):
-        def wrapper(self, func):
-            def func_itself(*args, **kwargs):
-                self.current_cursor = self.current_connection.cursor()
-
-                func(*args, **kwargs)
-
-                self.current_cursor.close()
-            return func_itself
-        return wrapper
 
 
 class UsersLists(DbManage):
-    @staticmethod
-    @DbManage.cursor_wrapper
 
+    @staticmethod
+    @query_execution
     def get_user_lists(self, id):
         self.current_cursor.execute(
             r"select name from lists where user_id = {id}"
         )
 
     @staticmethod
-    @DbManage.cursor_wrapper
+    @query_execution
 
     def get_words_from_list(self, list_id):
         self.currect_cursor.execute(
@@ -40,25 +49,27 @@ class UsersLists(DbManage):
         return self.current_cursor.fetchone()
 
     @staticmethod
-    @DbManage.cursor_wrapper
+    @query_execution
 
-    def add_list(self, user_id, list_name):
-        next_id_query = '(select max(id) + 1)'
+    def add_list(user_id, list_name, last_update, interval=60):
+        next_id_query = '(select max(id) + 1 from lists)'
 
-        self.currect_cursor.execute(
-            r"insert into lists (id, user_id, name, words) values ({next_id_query}, {user_id}, {list_name}, '{}')"
+        UsersLists.current_cursor.execute(
+            "insert into lists values (%s, '{}', %s, '%s %s %s')" %
+            (next_id_query, user_id, list_name, interval, last_update)
         )
 
     @staticmethod
-    @DbManage.cursor_wrapper
+    @query_execution
 
     def add_words_to_list(self, list_id, words):
         self.current_cursor.execute(
             r"update lists add words = '{words}' where id = {list_id}"
         )
+        UsersLists.current_cursor.fetchone()
     
     @staticmethod
-    @DbManage.cursor_wrapper
+    @query_execution
 
     def get_all_users_lists(self, user_id):
         self.current_cursor.execute(
@@ -67,18 +78,10 @@ class UsersLists(DbManage):
         return self.current_cursor.fetchone()
 
     @staticmethod
-    @DbManage.cursor_wrapper
+    @query_execution
 
     def get_listID_by_name(self, list_name):
         self.current_cursor.execute(
             r"select id from lists where name = lower({list_name})"
         )
         return self.current_cursor.fetchone()
-
-    @staticmethod
-    @DbManage.cursor_wrapper
-
-    def delete_list(self, list_id):
-        self.current_cursor.execute(
-            r"delete from lists where list_id = id"
-        )
