@@ -1,0 +1,2 @@
+pytelegram-bot
+psycopg2
