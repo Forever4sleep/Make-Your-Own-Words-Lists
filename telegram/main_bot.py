@@ -11,7 +11,7 @@ bot = TeleBot(config.BOT_TOKEN)
 
 remove_keyboard = types.ReplyKeyboardRemove(False)
 
-# ! From the first view, it may be scary to read the code, but the majority of the code is just linked functions that are responsible for lists' creation
+# ! From the first view, it may be scary to read the code, but the majority of the code are just linked functions that are responsible for lists' creation
 
 #Keyboards
 
@@ -127,7 +127,7 @@ def time_itself_set(message, time_format, list_name, words):
 
     try: 
         time = int(message.text)
-        time_in_seconds = time * choices[time_format]
+        time_in_seconds = time * time_format_choices[time_format]
     except Exception:
         next_step(message.chat.id, "Unable to set the time, try again (Do not write letters while you're setting the time)",
                 time_itself_set, remove_keyboard, time_format, list_name, words)
