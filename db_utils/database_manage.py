@@ -3,22 +3,24 @@ import config
 from functools import wraps
 
 
-def query_execution(func):
+def query_execution(do_commit=True):
     """ A decorator that saves changes in a db and at the same time frees resources of cursor """
-    @wraps(func)
-    def func_itself(*args, **kwargs):
-        DbManage.current_cursor = DbManage.current_connection.cursor()
+    def decorator(func):
+        def func_itself(*args, **kwargs):
+            DbManage.current_cursor = DbManage.current_connection.cursor()
 
-        res = func(*args, **kwargs)
+            res = func(*args, **kwargs)
 
-        DbManage.current_connection.commit()
+            if do_commit:
+                DbManage.current_connection.commit()
 
-        DbManage.current_cursor.close()
+            DbManage.current_cursor.close()
 
-        if res is not None:
-            return res
+            if res is not None:
+                return res
 
-    return func_itself
+        return func_itself
+    return decorator
 
 
 
@@ -33,14 +35,14 @@ class DbManage:
 class UsersLists(DbManage):
 
     @staticmethod
-    @query_execution
+    @query_execution(do_commit=False)
     def get_user_lists(self, id):
         self.current_cursor.execute(
             r"select name from lists where user_id = {id}"
         )
 
     @staticmethod
-    @query_execution
+    @query_execution(do_commit=False)
 
     def get_words_from_list(self, list_id):
         self.currect_cursor.execute(
@@ -49,7 +51,7 @@ class UsersLists(DbManage):
         return self.current_cursor.fetchone()
 
     @staticmethod
-    @query_execution
+    @query_execution(do_commit=True)
 
     def add_list(user_id, list_name, last_update, interval=60):
         next_id_query = '(select max(id) + 1 from lists)'
@@ -60,7 +62,7 @@ class UsersLists(DbManage):
         )
 
     @staticmethod
-    @query_execution
+    @query_execution(do_commit=True)
 
     def add_words_to_list(self, list_id, words):
         self.current_cursor.execute(
@@ -69,7 +71,7 @@ class UsersLists(DbManage):
         UsersLists.current_cursor.fetchone()
     
     @staticmethod
-    @query_execution
+    @query_execution(do_commit=False)
 
     def get_all_users_lists(self, user_id):
         self.current_cursor.execute(
@@ -78,7 +80,7 @@ class UsersLists(DbManage):
         return self.current_cursor.fetchone()
 
     @staticmethod
-    @query_execution
+    @query_execution(do_commit=False)
 
     def get_listID_by_name(self, list_name):
         self.current_cursor.execute(
