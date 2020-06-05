@@ -4,11 +4,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import config
 import datetime
+import time
+import threading
 
-from telebot import TeleBot, types
+from telebot import TeleBot, types, apihelper
+from functools import wraps
 from utils.db.database_manage import UserManager, UserListManager, DbTools
 from utils.keyboards_utils import set_main_menu_keyboard, set_time_format_keyboard, set_removing_keyboard
 from utils.functions_wrapps import next_step
+from dateutil import parser
 
 BOT = TeleBot(config.BOT_TOKEN)
 
@@ -18,14 +22,16 @@ REMOVE_KEYBOARD = types.ReplyKeyboardRemove(False) #It's created for not overusi
 # ! From the first view, it may be scary to read the code, but the majority of one are just linked functions that are responsible for lists' creation/removing/updating and so on
 # ! How it works? Firstly, when user starts the BOTwith '/start' command, 'handle_start_message' activates, then the main keyboard menu is being popped up 
 # ! By executing 'next_step' and reply_markup=set_main_menu_keyboard, so, this is the principe how it works: Choosing an action, then following the further
-#!  Instructions BOT gives to user
+# !  Instructions BOT gives to user
+
+
+#An option selecting area
 
 
 def choose_an_option(message):
     """A function that sets a further action"""
     chat_id = message.chat.id
     user_name = message.from_user.first_name
-
 
     user_id = message.from_user.id
 
@@ -61,10 +67,15 @@ def choose_an_option(message):
         print("Set time")
 
 
+#Ending of selection area
+
+
+#List removing area
+
+
 def delete_option_handler(message):
     user_id = message.from_user.id
     chat_id = message.chat.id
-
     list_name = message.text
     get_lists_name = DbTools.get_fields_from_table("lists", "name", f"name = '{list_name}' and user_id = {user_id}") 
     does_list_exist = get_lists_name is not None and get_lists_name[0] is not None
@@ -80,6 +91,13 @@ def delete_option_handler(message):
     else:
         next_step(BOT, chat_id, "*You have no list with such name*", delete_option_handler, REMOVE_KEYBOARD)
         return
+
+
+
+#Ending of list removing area
+
+
+# List creation area
 
 
 def create_option_handler(message):
@@ -152,12 +170,45 @@ def create_list(message, list_name, words, time_format, time):
     else:
         UserManager.interact_with_lists_count(user_id, "increase")
     
-    UserListManager.add_list(user_id, list_name, words, time)
+    UserListManager.add_list(user_id, list_name, words, time, chat_id)
 
     BOT.send_message(chat_id, "The list has succesfully been created!")
 
     next_step(BOT, chat_id, "*Would you like to create/delete/update a list*",
             choose_an_option, set_main_menu_keyboard())
+
+
+#Ending of list creation area
+
+
+#Sending words area
+
+
+def send_words():
+    while True:
+        time.sleep(80)
+
+        all_lists = DbTools.get_fields_from_table("lists", "*", "none")
+        for field in all_lists:
+
+            words = field[5]
+            
+            update_date = field[4]
+            list_name = field[2]
+            list_id = field[0]
+
+            chat_id = field[1]
+            
+            sending_time = field[3]
+            time_now = datetime.datetime.now()
+            parsed_last_updated_time = parser.parse(str(update_date))
+
+            if (time_now - parsed_last_updated_time).seconds >= sending_time:
+                BOT.send_message(chat_id, f"*REMINDING OF {list_name}!*\n\n*{words}*", parse_mode="markdown")
+                UserListManager.update_last_update_datetime(list_id)
+
+
+#Ending of sending words area
 
 
 @BOT.message_handler(commands=["start"])
@@ -169,4 +220,5 @@ def handle_start_message(message):
             choose_an_option, set_main_menu_keyboard())
 
 
-BOT.polling()
+threading.Thread(target=send_words).start()
+BOT.polling(none_stop=True)

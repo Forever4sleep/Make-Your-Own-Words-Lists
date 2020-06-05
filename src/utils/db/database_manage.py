@@ -27,7 +27,8 @@ def query_execution(do_commit=True, close_cursor=True):
 
 
 class DbTools:
-    """Implements a function, returning fields from a table, and two fields to work with connection and cursor"""
+
+    """The class implements a function, returning fields from a table, and two fields to work with connection and cursor"""
     current_connection = psy.connect(dbname=config.DB_NAME, user=config.USER,
                                     password=config.PASSWORD, host=config.HOST)
     
@@ -37,9 +38,14 @@ class DbTools:
     @query_execution(do_commit=False)
 
     def get_fields_from_table(table, fields, condition):
-        UserManager.current_cursor.execute(
-            f"select {fields} from {table} where {condition}"
-        )
+        if condition != "none":
+            UserManager.current_cursor.execute(
+                f"select {fields} from {table} where {condition}"
+            )
+        else: 
+            UserManager.current_cursor.execute(
+                f"select {fields} from {table}"
+            )
         return UserManager.current_cursor.fetchall()
 
 
@@ -110,20 +116,26 @@ class UserListManager(DbTools):
     @staticmethod
     @query_execution(do_commit=True)
 
-    def add_list(user_id, list_name, words, interval=60):
+    def add_list(user_id, list_name, words, interval, chat_id):
         next_id_query = UserListManager.get_last_id() + 1
 
         UserManager.current_cursor.execute(
-            "insert into lists values (%s, %s, '%s', %s, current_timestamp, '%s')" % 
-            (next_id_query, user_id, list_name, interval, words)
+            "insert into lists values (%s, %s, '%s', %s, current_timestamp, '%s', %s)" % 
+            (next_id_query, user_id, list_name, interval, words, chat_id)
         )
 
     @staticmethod
     @query_execution(do_commit=True)
 
     def remove_list(user_id, list_name):
-        next_id_query = UserListManager.get_last_id() + 1
-
         UserManager.current_cursor.execute(
           f"delete from lists where user_id = {user_id} and name = '{list_name}'"
         )   
+
+    @staticmethod
+    @query_execution(do_commit=True)
+
+    def update_last_update_datetime(list_id):
+        UserManager.current_cursor.execute(
+          f"update lists set updated_date = current_timestamp where id = {list_id}"
+        )  
