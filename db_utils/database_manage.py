@@ -49,9 +49,9 @@ class UserManager(DbTools):
     @staticmethod
     @query_execution(do_commit=True)
 
-    def add_user(user_id, active=True):
+    def add_user(user_id, list_count, active=True):
         UserManager.current_cursor.execute(
-            f'insert into users values ({user_id}, {active})'
+            f"insert into users values ({user_id}, {active}, {list_count})"
         )
     
     @staticmethod
@@ -59,9 +59,16 @@ class UserManager(DbTools):
 
     def set_user_active(user_id, active):
         UserManager.current_cursor.execute(
-            f'update users set active = {active} where user_id = {user_id}'
+            f"update users set active = {active} where user_id = {user_id}"
         )
+    
+    @staticmethod
+    @query_execution(do_commit=True)
 
+    def increase_users_lists_count(user_id):
+        UserManager.current_cursor.execute(
+            f"update users set lists_count = lists_count + 1 where id = {user_id}"
+        )
 
 class UserListManager(DbTools):
     
