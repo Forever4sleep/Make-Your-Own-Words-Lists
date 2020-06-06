@@ -27,8 +27,6 @@ def query_execution(do_commit=True, close_cursor=True):
 
 
 class DbTools:
-
-    """The class implements a function, returning fields from a table, and two fields to work with connection and cursor"""
     current_connection = psy.connect(dbname=config.DB_NAME, user=config.USER,
                                     password=config.PASSWORD, host=config.HOST)
     
@@ -39,18 +37,20 @@ class DbTools:
 
     def get_fields_from_table(table, fields, condition):
         if condition != "none":
-            UserManager.current_cursor.execute(
+            DbTools.current_cursor.execute(
                 f"select {fields} from {table} where {condition}"
             )
         else: 
-            UserManager.current_cursor.execute(
+            DbTools.current_cursor.execute(
                 f"select {fields} from {table}"
             )
-        return UserManager.current_cursor.fetchall()
+        return DbTools.current_cursor.fetchall()
 
 
 
 class UserManager(DbTools):
+
+    CACHED_USERS_RESULTS = list(list(user_elements) for user_elements in DbTools.get_fields_from_table("users", "*", "none"))
 
     @staticmethod
     @query_execution(do_commit=True)
@@ -83,6 +83,8 @@ class UserManager(DbTools):
 
 class UserListManager(DbTools):
     
+    CACHED_LISTS_RESULTS = list(list(list_elements) for list_elements in DbTools.get_fields_from_table("lists", "*", "none"))
+
     @staticmethod
     @query_execution(do_commit=False)
 
@@ -101,27 +103,24 @@ class UserListManager(DbTools):
             f"update lists add words = '{words}' where id = {list_id}"
         )
 
+    
     @staticmethod
-    @query_execution(do_commit=False, close_cursor=False)
+    @query_execution(do_commit=True)
 
-    def get_last_id():
+    def add_list(user_id, list_name, words, interval, chat_id):
+
+        #Getting of last id
         UserManager.current_cursor.execute(
             "select max(id) from lists"
         )
 
         fetched_result = UserManager.current_cursor.fetchone()
 
-        return fetched_result[0] if fetched_result[0] is not None else 0
-
-    @staticmethod
-    @query_execution(do_commit=True)
-
-    def add_list(user_id, list_name, words, interval, chat_id):
-        next_id_query = UserListManager.get_last_id() + 1
+        next_id = fetched_result[0] + 1 if fetched_result[0]  is not None else 0
 
         UserManager.current_cursor.execute(
             "insert into lists values (%s, %s, '%s', %s, current_timestamp, '%s', %s)" % 
-            (next_id_query, user_id, list_name, interval, words, chat_id)
+            (next_id, user_id, list_name, interval, words, chat_id)
         )
 
     @staticmethod
@@ -138,4 +137,4 @@ class UserListManager(DbTools):
     def update_last_update_datetime(list_id):
         UserManager.current_cursor.execute(
           f"update lists set updated_date = current_timestamp where id = {list_id}"
-        )  
+        )
