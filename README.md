@@ -6,3 +6,5 @@ To start using the bot, you need to subscribe to the one: t.me/MakeYourOwnWordsL
 Now you're ready to create lists of words, there's its menu, so just follow it. 
 
 P.S: The project is not deployed!
+
+
