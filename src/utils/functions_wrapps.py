@@ -13,5 +13,5 @@ def next_step(bot, chat_id, message, handler_func, markup, *args, **kwargs):
 
     """
 
-    msg = bot.send_message(chat_id, message, parse_mode='markdown', reply_markup=markup)
+    msg = bot.send_message(chat_id, f"*{message}*", parse_mode='markdown', reply_markup=markup)
     bot.register_next_step_handler(msg, handler_func, *args, **kwargs)

@@ -28,29 +28,19 @@ REMOVE_KEYBOARD = types.ReplyKeyboardRemove(False) #It's created for not overusi
 
 #Decorator for CACHED DB RESULTS filling area
 
-def cache_results(table):
+def cache_results():
     def cache_results(func):
         @wraps(func)
         def wrapped_func(*args, **kwargs):
             func_result = func(*args, **kwargs)
 
-            if table == "both":
-                UserListManager.CACHED_LISTS_RESULTS = DbTools.get_fields_from_table(
+            UserListManager.CACHED_LISTS_RESULTS = DbTools.get_fields_from_table(
                     "lists", "*", "none"
-                )
-                UserManager.CACHED_USERS_RESULTS = DbTools.get_fields_from_table(
-                    "users", "*", "none"
-                )
+            )
 
-            elif table == "lists":
-                UserListManager.CACHED_LISTS_RESULTS = DbTools.get_fields_from_table(
-                    "lists", "*", "none"
-                )
-
-            elif table == "users":
-                UserManager.CACHED_USERS_RESULTS = DbTools.get_fields_from_table(
+            UserManager.CACHED_USERS_RESULTS = DbTools.get_fields_from_table(
                     "users", "*", "none"
-                )
+            )
 
             if func_result is not None:
                 return func_result
@@ -107,7 +97,7 @@ def choose_an_option(message):
 #List removing area
 
 
-@cache_results("both")
+@cache_results()
 def delete_option_handler(message, markup):
     user_id = message.from_user.id
     chat_id = message.chat.id
@@ -140,7 +130,7 @@ def create_option_handler(message):
 
     if same_list:
         error_message_text = "You already have a list with the similar name"
-        next_step(BOT, chat_id, error_message_text, REMOVE_KEYBOARD, create_option_handler)
+        next_step(BOT, chat_id, error_message_text, create_option_handler, REMOVE_KEYBOARD)
         return    
 
     next_step(BOT, chat_id, "Now write words for remembering", fill_words,
@@ -194,7 +184,7 @@ def time_itself_set(message, time_format, list_name, words):
         create_list(message, list_name, words, time_format, time_in_seconds)
 
 
-@cache_results("lists")
+@cache_results()
 def create_list(message, list_name, words, time_format, time):
     chat_id = message.chat.id
 
@@ -202,6 +192,8 @@ def create_list(message, list_name, words, time_format, time):
     user_id = message.from_user.id
     the_user = [lst for lst in UserManager.CACHED_USERS_RESULTS if lst[0] == user_id]
     
+    print(the_user)
+
     if not the_user:
         UserManager.add_user(user_id, 1)
     else:
@@ -247,12 +239,13 @@ def send_words():
                     BOT.send_message(chat_id, f"*🔥 REMINDING OF {list_name}!*\n\nWords:\n*{words}*", parse_mode="markdown")
                 except:
                     print("Unable to send a message: the chat_id is not correct")
-                    continue
-                
+                    continue          
 
 
 #Ending of sending words area
 
+
+#Message handling area
 
 @BOT.message_handler(commands=["start"])
 def handle_start_message(message):
@@ -261,6 +254,9 @@ def handle_start_message(message):
     BOT.send_message(chat_id, config.BOT_GREETING, parse_mode="markdown") 
     next_step(BOT, chat_id, "Would you like to create/delete/update a list",
             choose_an_option, set_main_menu_keyboard())
+
+
+#Ending of message handling area
 
 
 threading.Thread(target=send_words).start()
